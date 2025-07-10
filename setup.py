@@ -11,7 +11,11 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=[
+           'setuptools',
+           'ultralytics',
+           'opencv-python',
+    ],
     zip_safe=True,
     maintainer='robot',
     maintainer_email='ryo.saegusa@syblab.org',
@@ -20,6 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'yolo_node = yolo_ros2.yolo_node:main',
         ],
     },
 )
