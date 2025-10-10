@@ -1,3 +1,6 @@
+import os
+from glob import glob
+from pathlib import Path
 from setuptools import find_packages, setup
 
 package_name = 'yolo_ros2'
@@ -10,7 +13,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/yolo_depth.launch.py']),
+        (os.path.join('share', package_name), glob('launch/*launch.[pxy][yma]*')),
     ],
     install_requires=[
            'setuptools',

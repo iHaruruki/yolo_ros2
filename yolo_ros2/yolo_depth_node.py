@@ -63,8 +63,8 @@ class YoloDepthNode(Node):
         self.declare_parameter('camera_info_topic', '/camera/color/camera_info')
         self.declare_parameter('rgb_topic', '/camera/color/image_raw')
         self.declare_parameter('camera_depth_info_topic', '/camera/depth/camera_info')
-        self.declare_parameter('depth_topic', '/camera/aligned_depth_to_color/image_raw')
-        self.declare_parameter('model_path', 'yolov11n.pt')
+        self.declare_parameter('depth_topic', '/camera/depth/image_raw')
+        self.declare_parameter('model_path', './model/yolo11n.pt')
         self.declare_parameter('conf_thres', 0.25)
         self.declare_parameter('iou_thres', 0.45)
         self.declare_parameter('max_det', 100)
@@ -126,9 +126,11 @@ class YoloDepthNode(Node):
         self.sub_depth = Subscriber(self, Image, self.depth_topic, qos_profile=sensor_qos)
         # CameraInfo can be unsynced; we will cache the latest
         self.create_subscription(CameraInfo, self.camera_info_topic, self.on_camera_info, qos_profile=sensor_qos)
+        #self.create_subscription(CameraInfo, self.camera_depth_info_topic, self.on_camera_info, qos_profile=sensor_qos) # Depth info
         self.camera_info: Optional[CameraInfo] = None
+        #self.camera_depth_info: Optional[CameraInfo] = None # Depth info
 
-        self.sync = ApproximateTimeSynchronizer([self.sub_rgb, self.sub_depth], queue_size=10, slop=0.1)
+        self.sync = ApproximateTimeSynchronizer([self.sub_rgb, self.sub_depth], queue_size=50, slop=0.1)
         self.sync.registerCallback(self.synced_callback)
 
         # Publisher
