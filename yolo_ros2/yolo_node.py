@@ -10,7 +10,7 @@ class YoloNode(Node):
     def __init__(self):
         super().__init__('yolo_node')
         self.bridge = CvBridge()
-        self.model = YOLO('yolov8n.pt')
+        self.model = YOLO('./models/yolov8n.pt')
 
         # message_filters を使って Image と CameraInfo を同期
         self.image_sub = Subscriber(self, Image, '/camera/color/image_raw')
