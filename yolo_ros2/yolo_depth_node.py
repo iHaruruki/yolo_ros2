@@ -140,6 +140,7 @@ class YoloDepthNode(Node):
 
     def on_camera_info(self, msg: CameraInfo):
         self.camera_info = msg
+        #self.get_logger().info('CameraInfo received and cached.')
 
     def synced_callback(self, rgb_msg: Image, depth_msg: Image):
         if self.camera_info is None:
