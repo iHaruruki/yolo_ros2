@@ -64,7 +64,7 @@ class YoloDepthNode(Node):
         self.declare_parameter('rgb_topic', '/camera/color/image_raw')
         self.declare_parameter('camera_depth_info_topic', '/camera/depth/camera_info')
         self.declare_parameter('depth_topic', '/camera/depth/image_raw')
-        self.declare_parameter('model_path', './model/yolo11n.pt')
+        self.declare_parameter('model_path', './models/yolov8n.pt')
         self.declare_parameter('conf_thres', 0.25)
         self.declare_parameter('iou_thres', 0.45)
         self.declare_parameter('max_det', 100)
