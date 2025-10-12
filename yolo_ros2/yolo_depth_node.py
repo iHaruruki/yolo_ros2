@@ -23,12 +23,13 @@ from ultralytics import YOLO
 class YoloCenterDistanceNode(Node):
     def __init__(self):
         super().__init__('yolo_center_distance_node')
+        current_dir = os.path.dirname(os.path.abspath(__file__))
 
         # ========= パラメータ =========
         self.declare_parameter('rgb_topic', '/camera/color/image_raw')
         self.declare_parameter('depth_topic', '/camera/depth/image_raw')
         self.declare_parameter('depth_info_topic', '/camera/depth/camera_info')
-        self.declare_parameter('model_path', './models/yolo11n.pt')
+        self.declare_parameter('model_path', os.path.join(current_dir, '..', 'models', 'yolo11n.pt'))
         self.declare_parameter('conf', 0.25)
         self.declare_parameter('iou', 0.45)
         self.declare_parameter('device', 'cpu')  # 'cpu' or '0' (GPU)
