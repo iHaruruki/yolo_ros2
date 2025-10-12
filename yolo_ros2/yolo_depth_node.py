@@ -209,14 +209,19 @@ class YoloCenterDistanceNode(Node):
 
                 # ---- TF 配信 ----
                 if not np.isnan(Z):
+                    #camera_link（X前=奥行き, Y左, Z上）へ変換
+                    xl = Z
+                    yl = -X
+                    zl = -Y
+
                     t = TransformStamped()
                     t.header.stamp = rgb_msg.header.stamp
                     t.header.frame_id = self.parent_frame
                     t.child_frame_id = f"object_{cid}_{i}"
 
-                    t.transform.translation.x = X
-                    t.transform.translation.y = Y
-                    t.transform.translation.z = Z
+                    t.transform.translation.x = xl
+                    t.transform.translation.y = yl
+                    t.transform.translation.z = zl
                     t.transform.rotation.x = 0.0
                     t.transform.rotation.y = 0.0
                     t.transform.rotation.z = 0.0
