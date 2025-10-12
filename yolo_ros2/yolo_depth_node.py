@@ -170,7 +170,6 @@ class YoloCenterDistanceNode(Node):
                 det.header = rgb_msg.header
 
                 bbox = BoundingBox2D()
-                bbox.center = Pose2D()
                 bbox.center.x = float((x1 + x2) / 2.0)
                 bbox.center.y = float((y1 + y2) / 2.0)
                 bbox.size_x = float(max(0.0, x2 - x1))
