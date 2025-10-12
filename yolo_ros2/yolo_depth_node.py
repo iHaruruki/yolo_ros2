@@ -28,7 +28,7 @@ class YoloCenterDistanceNode(Node):
         self.declare_parameter('rgb_topic', '/camera/color/image_raw')
         self.declare_parameter('depth_topic', '/camera/depth/image_raw')
         self.declare_parameter('depth_info_topic', '/camera/depth/camera_info')
-        self.declare_parameter('model_path', './models/yolo11n.pt')  # 例: ./yolo11n.pt
+        self.declare_parameter('model_path', './models/yolo11n.pt')
         self.declare_parameter('conf', 0.25)
         self.declare_parameter('iou', 0.45)
         self.declare_parameter('device', 'cpu')  # 'cpu' or '0' (GPU)
@@ -47,8 +47,9 @@ class YoloCenterDistanceNode(Node):
         self.win        = self.win if self.win % 2 == 1 else self.win + 1  # 奇数に
 
         # ========= YOLO 読み込み =========
+        yolo_model_dir = os.path.join(model_path)
         try:
-            self.model = YOLO(model_path)
+            self.model = YOLO(yolo_model_dir)
             # Ultralytics の task/type は自動判別。conf, iou は predict 引数で渡す
         except Exception as e:
             self.get_logger().error(f'Failed to load model: {e}')
