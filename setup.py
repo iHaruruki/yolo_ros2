@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'yolo_node = yolo_ros2.yolo_node:main',
             'yolo_depth_node = yolo_ros2.yolo_depth_node:main',
+            'image_show_node = yolo_ros2.imshow:main',
         ],
     },
 )
