@@ -9,9 +9,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, ObjectHypothesisWithPose
-from geometry_msgs.msg import Pose2D
+from geometry_msgs.msg import TransformStamped
 from cv_bridge import CvBridge
 import cv2
+import tf2_ros
 
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 
@@ -75,6 +76,10 @@ class YoloCenterDistanceNode(Node):
             self.pub_img = self.create_publisher(Image, '/yolo/overlay', 10)
 
         self.get_logger().info('YOLO Center Distance node started.')
+
+        # ========= TF Broadcaster =========
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+        self.parent_frame = "camera_link"  # カメラTF名。必要に応じて変更
 
     # CameraInfo から内部パラメータを確定
     def _update_intrinsics(self, info: CameraInfo):
@@ -170,8 +175,11 @@ class YoloCenterDistanceNode(Node):
                 det.header = rgb_msg.header
 
                 bbox = BoundingBox2D()
-                bbox.center.x = float((x1 + x2) / 2.0)
-                bbox.center.y = float((y1 + y2) / 2.0)
+                # Use the existing sub-message instance to avoid type assertion errors
+                # BoundingBox2D.center is a Pose2D message which contains a 'position' (Point) and 'theta'
+                bbox.center.position.x = float((x1 + x2) / 2.0)
+                bbox.center.position.y = float((y1 + y2) / 2.0)
+                bbox.center.theta = 0.0
                 bbox.size_x = float(max(0.0, x2 - x1))
                 bbox.size_y = float(max(0.0, y2 - y1))
                 det.bbox = bbox
@@ -197,6 +205,23 @@ class YoloCenterDistanceNode(Node):
                     cv2.putText(overlay, label, (int(x1), max(0, int(y1)-5)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
                     cv2.circle(overlay, (int(cx), int(cy)), 4, (255, 0, 0), -1)
+
+                # ---- TF 配信 ----
+                if not np.isnan(Z):
+                    t = TransformStamped()
+                    t.header.stamp = rgb_msg.header.stamp
+                    t.header.frame_id = self.parent_frame
+                    t.child_frame_id = f"object_{cid}_{i}"
+
+                    t.transform.translation.x = X
+                    t.transform.translation.y = Y
+                    t.transform.translation.z = Z
+                    t.transform.rotation.x = 0.0
+                    t.transform.rotation.y = 0.0
+                    t.transform.rotation.z = 0.0
+                    t.transform.rotation.w = 1.0
+
+                    self.tf_broadcaster.sendTransform(t)
 
         # Publish detections
         self.pub_det.publish(det_arr)
