@@ -31,6 +31,7 @@ setup(
             'yolo_node = yolo_ros2.yolo_node:main',
             'image_show_node = yolo_ros2.imshow:main',
             'object_detection_node = yolo_ros2.object_detection:main',
+            'object_segmentation_node = yolo_ros2.object_segmentation:main',
         ],
     },
 )
