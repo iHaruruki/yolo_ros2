@@ -18,11 +18,27 @@ pip3 uninstall -y opencv-python
 ### Object detection
 Run camera
 ```bash
-ros2 run usb_cam usb_cam_node_exe
+ros2 launch astra_camera astra_pro.launch.xml
 ```
 Run `object_detection_node`
 ```bash
 ros2 run yolo_ros2 object_detection_node --ros-args --remap image_raw:=/camera/color/image_raw
+```
+### Object segmentation
+Run camera
+```bash
+ros2 launch astra_camera astra_pro.launch.xml
+```
+```bash
+ros2 run yolo_ros2 object_segmentation_node --ros-args --remap image_raw:=/camera/color/image_raw
+```
+### Object detection tf
+Run camera
+```bash
+ros2 launch astra_camera astra_pro.launch.xml
+```
+```bash
+ros2 run yolo_ros2 object_detection_tf_node
 ```
 
 ## 👤 Authors
