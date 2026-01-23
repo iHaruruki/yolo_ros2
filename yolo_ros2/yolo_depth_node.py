@@ -1,69 +1,34 @@
 #!/usr/bin/env python3
-import os
-import math
-import time
-from typing import Optional, Tuple
+# -*- coding: utf-8 -*-
 
+import os
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from sensor_msgs.msg import Image, CameraInfo
-from vision_msgs.msg import Detection3DArray, Detection3D, ObjectHypothesisWithPose
-from geometry_msgs.msg import PoseWithCovariance, Pose, Point, Quaternion
-from std_msgs.msg import Header
 
+from sensor_msgs.msg import Image, CameraInfo
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
+from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, ObjectHypothesisWithPose
+from geometry_msgs.msg import TransformStamped
 from cv_bridge import CvBridge
+import cv2
+import tf2_ros
+
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 
-# Lazy import ultralytics to allow running without it for linting
-try:
-    from ultralytics import YOLO
-except Exception:
-    YOLO = None
+# Ultralytics YOLOv11n を使用
+# pip install ultralytics
+from ultralytics import YOLO
 
-
-def depth_to_meters(depth_array: np.ndarray, encoding: str, depth_scale: float) -> np.ndarray:
-    # Convert depth image to meters based on encoding
-    if encoding in ('16UC1', 'mono16'):
-        # millimeters -> meters via depth_scale (default 0.001)
-        return depth_array.astype(np.float32) * depth_scale
-    elif encoding in ('32FC1'):
-        # already meters
-        return depth_array.astype(np.float32)
-    else:
-        # Try passthrough guess
-        return depth_array.astype(np.float32) * depth_scale
-
-
-def median_depth_at(depth_m: np.ndarray, u: int, v: int, win: int) -> Optional[float]:
-    h, w = depth_m.shape
-    half = win // 2
-    u0, u1 = max(0, u - half), min(w, u + half + 1)
-    v0, v1 = max(0, v - half), min(h, v + half + 1)
-    patch = depth_m[v0:v1, u0:u1].reshape(-1)
-    patch = patch[np.isfinite(patch)]
-    patch = patch[(patch > 0.0) & (patch < 100.0)]  # 0 < Z < 100m guard
-    if patch.size == 0:
-        return None
-    return float(np.median(patch))
-
-
-def backproject(u: float, v: float, z: float, fx: float, fy: float, cx: float, cy: float) -> Tuple[float, float, float]:
-    x = (u - cx) * z / fx
-    y = (v - cy) * z / fy
-    return x, y, z
-
-
-class YoloDepthNode(Node):
+class YoloCenterDistanceNode(Node):
     def __init__(self):
-        super().__init__('yolo_depth_node')
+        super().__init__('yolo_center_distance_node')
+        current_dir = os.path.dirname(os.path.abspath(__file__))
 
-        # Parameters
-        self.declare_parameter('camera_info_topic', '/camera/color/camera_info')
+        # ========= パラメータ =========
         self.declare_parameter('rgb_topic', '/camera/color/image_raw')
-        self.declare_parameter('camera_depth_info_topic', '/camera/depth/camera_info')
         self.declare_parameter('depth_topic', '/camera/depth/image_raw')
+<<<<<<< HEAD
         self.declare_parameter('model_path', './models/yolov8n.pt')
         self.declare_parameter('conf_thres', 0.25)
         self.declare_parameter('iou_thres', 0.45)
@@ -71,192 +36,243 @@ class YoloDepthNode(Node):
         self.declare_parameter('depth_scale', 0.001)  # for 16UC1 mm -> meters
         self.declare_parameter('depth_window', 5)     # window size for median depth
         self.declare_parameter('class_filter', [])    # list of class names or indices to include, empty = all
+=======
+        self.declare_parameter('depth_info_topic', '/camera/depth/camera_info')
+        self.declare_parameter('model_path', os.path.join(current_dir, '..', 'models', 'yolo11n.pt'))
+        self.declare_parameter('conf', 0.25)
+        self.declare_parameter('iou', 0.45)
+        self.declare_parameter('device', 'cpu')  # 'cpu' or '0' (GPU)
+        self.declare_parameter('publish_overlay', True)
+        self.declare_parameter('center_window', 5)  # 中心近傍のウィンドウ（奇数）
+>>>>>>> 754b329e14e18c965a33a123f9cef99fde6b28f1
 
-        self.camera_info_topic = self.get_parameter('camera_info_topic').get_parameter_value().string_value
-        self.rgb_topic = self.get_parameter('rgb_topic').get_parameter_value().string_value
-        self.camera_depth_info_topic = self.get_parameter('camera_depth_info_topic').get_parameter_value().string_value
-        self.depth_topic = self.get_parameter('depth_topic').get_parameter_value().string_value
-        self.model_path = self.get_parameter('model_path').get_parameter_value().string_value
-        self.conf_thres = self.get_parameter('conf_thres').get_parameter_value().double_value
-        self.iou_thres = self.get_parameter('iou_thres').get_parameter_value().double_value
-        self.max_det = int(self.get_parameter('max_det').get_parameter_value().integer_value)
-        self.depth_scale = self.get_parameter('depth_scale').get_parameter_value().double_value
-        self.depth_window = int(self.get_parameter('depth_window').get_parameter_value().integer_value)
-        self.class_filter_param = self.get_parameter('class_filter').get_parameter_value().string_array_value
+        rgb_topic       = self.get_parameter('rgb_topic').get_parameter_value().string_value
+        depth_topic     = self.get_parameter('depth_topic').get_parameter_value().string_value
+        depth_info_topic= self.get_parameter('depth_info_topic').get_parameter_value().string_value
+        model_path      = self.get_parameter('model_path').get_parameter_value().string_value
+        self.conf       = float(self.get_parameter('conf').value)
+        self.iou        = float(self.get_parameter('iou').value)
+        self.device     = self.get_parameter('device').get_parameter_value().string_value
+        self.pub_overlay= bool(self.get_parameter('publish_overlay').value)
+        self.win        = int(self.get_parameter('center_window').value)
+        self.win        = self.win if self.win % 2 == 1 else self.win + 1  # 奇数に
 
-        # Initialize YOLO
-        if YOLO is None:
-            raise RuntimeError("ultralytics is not installed. Please `pip install ultralytics`.")
-
-        self.get_logger().info(f'Loading YOLO model: {self.model_path}')
-        t0 = time.time()
-        self.model = YOLO(self.model_path)
-        # Optional: fuse/optimize
+        # ========= YOLO 読み込み =========
+        yolo_model_dir = os.path.join(model_path)
         try:
-            self.model.fuse()
-        except Exception:
-            pass
-        self.get_logger().info(f'Model loaded in {time.time() - t0:.2f}s')
+            self.model = YOLO(yolo_model_dir)
+            # Ultralytics の task/type は自動判別。conf, iou は predict 引数で渡す
+        except Exception as e:
+            self.get_logger().error(f'Failed to load model: {e}')
+            raise
 
-        # Class filter processing (support indices or names)
-        self.class_names = self.model.model.names if hasattr(self.model, 'model') else self.model.names
-        self.allowed_classes = set()
-        if self.class_filter_param:
-            for token in self.class_filter_param:
-                token = token.strip()
-                if token.isdigit():
-                    self.allowed_classes.add(int(token))
-                else:
-                    # lookup by name
-                    name_to_idx = {v: k for k, v in self.class_names.items()}
-                    if token in name_to_idx:
-                        self.allowed_classes.add(name_to_idx[token])
-                    else:
-                        self.get_logger().warn(f'class_filter entry "{token}" not found in model classes; ignoring')
-
-        # QoS for sensors
-        sensor_qos = QoSProfile(depth=10)
-        sensor_qos.reliability = ReliabilityPolicy.BEST_EFFORT
-        sensor_qos.history = HistoryPolicy.KEEP_LAST
-
+        # ========= 同期購読 =========
         self.bridge = CvBridge()
+        self.fx = self.fy = self.cx = self.cy = None
 
-        # Subscribers with ApproximateTimeSynchronizer
-        self.sub_rgb = Subscriber(self, Image, self.rgb_topic, qos_profile=sensor_qos)
-        self.sub_depth = Subscriber(self, Image, self.depth_topic, qos_profile=sensor_qos)
-        # CameraInfo can be unsynced; we will cache the latest
-        self.create_subscription(CameraInfo, self.camera_info_topic, self.on_camera_info, qos_profile=sensor_qos)
-        #self.create_subscription(CameraInfo, self.camera_depth_info_topic, self.on_camera_info, qos_profile=sensor_qos) # Depth info
-        self.camera_info: Optional[CameraInfo] = None
-        #self.camera_depth_info: Optional[CameraInfo] = None # Depth info
+        self.rgb_sub   = Subscriber(self, Image, rgb_topic)
+        self.depth_sub = Subscriber(self, Image, depth_topic)
+        self.info_sub  = Subscriber(self, CameraInfo, depth_info_topic)
 
-        self.sync = ApproximateTimeSynchronizer([self.sub_rgb, self.sub_depth], queue_size=50, slop=0.1)
+        self.sync = ApproximateTimeSynchronizer(
+            [self.rgb_sub, self.depth_sub, self.info_sub],
+            queue_size=10,
+            slop=0.05
+        )
         self.sync.registerCallback(self.synced_callback)
 
-        # Publisher
-        self.pub = self.create_publisher(Detection3DArray, 'detections3d', 10)
+        # ========= Publisher =========
+        self.pub_det   = self.create_publisher(Detection2DArray, '/yolo/detections', 10)
+        self.pub_arr   = self.create_publisher(Float32MultiArray, '/yolo/center_depths', 10)
+        if self.pub_overlay:
+            self.pub_img = self.create_publisher(Image, '/yolo/overlay', 10)
 
-        self.get_logger().info('yolo_depth_node initialized.')
+        self.get_logger().info('YOLO Center Distance node started.')
 
+<<<<<<< HEAD
     def on_camera_info(self, msg: CameraInfo):
         self.camera_info = msg
         #self.get_logger().info('CameraInfo received and cached.')
+=======
+        # ========= TF Broadcaster =========
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+        self.parent_frame = "camera_link"  # カメラTF名。必要に応じて変更
+>>>>>>> 754b329e14e18c965a33a123f9cef99fde6b28f1
 
-    def synced_callback(self, rgb_msg: Image, depth_msg: Image):
-        if self.camera_info is None:
-            self.get_logger().warn_throttle(5000, 'Waiting for CameraInfo...')
-            return
+    # CameraInfo から内部パラメータを確定
+    def _update_intrinsics(self, info: CameraInfo):
+        self.fx = info.k[0]
+        self.fy = info.k[4]
+        self.cx = info.k[2]
+        self.cy = info.k[5]
 
-        # Convert images
-        try:
-            cv_rgb = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
-        except Exception as e:
-            self.get_logger().error(f'cv_bridge RGB conversion failed: {e}')
-            return
+    def _depth_to_meters(self, depth_cv, encoding: str):
+        # 32FC1: そのまま[m]、16UC1: [mm] を [m] に変換
+        if encoding.lower() in ['32fc1', '32fc']:
+            return depth_cv.astype(np.float32)
+        elif encoding.lower() in ['16uc1', '16uc']:
+            return depth_cv.astype(np.float32) / 1000.0
+        else:
+            # 不明形式は最善努力で float に
+            return depth_cv.astype(np.float32)
 
-        try:
-            depth_np = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
-        except Exception as e:
-            self.get_logger().error(f'cv_bridge Depth conversion failed: {e}')
-            return
+    def _median_center_depth(self, depth_m: np.ndarray, cx: float, cy: float):
+        h, w = depth_m.shape[:2]
+        x = int(round(cx))
+        y = int(round(cy))
+        half = self.win // 2
+        x0, x1 = max(0, x - half), min(w, x + half + 1)
+        y0, y1 = max(0, y - half), min(h, y + half + 1)
+        roi = depth_m[y0:y1, x0:x1]
+        valid = roi[np.isfinite(roi)]
+        valid = valid[(valid > 0.05) & (valid < 20.0)]  # 5cm〜20m の範囲
+        if valid.size == 0:
+            return float('nan')
+        return float(np.median(valid))
 
-        depth_m = depth_to_meters(depth_np, depth_msg.encoding, self.depth_scale)
+    def _pixel_to_camera(self, u: float, v: float, Z: float):
+        if self.fx is None:
+            return (float('nan'), float('nan'), Z)
+        X = (u - self.cx) * Z / self.fx
+        Y = (v - self.cy) * Z / self.fy
+        return (float(X), float(Y), float(Z))
 
-        # Run YOLO inference
+    def synced_callback(self, rgb_msg: Image, depth_msg: Image, info_msg: CameraInfo):
+        # Intrinsics 更新
+        if self.fx is None:
+            self._update_intrinsics(info_msg)
+
+        # 画像変換
+        rgb = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
+        depth = self.bridge.imgmsg_to_cv2(depth_msg)
+        depth_m = self._depth_to_meters(depth, depth_msg.encoding)
+
+        # 推論
         try:
             results = self.model.predict(
-                source=cv_rgb,  # numpy array BGR is OK
-                verbose=False,
-                conf=self.conf_thres,
-                iou=self.iou_thres,
-                max_det=self.max_det,
-                imgsz=None,
-                device=None  # auto
+                source=rgb,
+                conf=self.conf,
+                iou=self.iou,
+                device=self.device,
+                verbose=False
             )
         except Exception as e:
-            self.get_logger().error(f'YOLO inference failed: {e}')
+            self.get_logger().error(f'Inference error: {e}')
             return
 
-        if not results:
-            return
-        res = results[0]
+        det_arr = Detection2DArray()
+        det_arr.header = rgb_msg.header
 
-        # Extract intrinsics
-        K = np.array(self.camera_info.k, dtype=np.float32).reshape(3, 3)
-        fx, fy, cx, cy = float(K[0, 0]), float(K[1, 1]), float(K[0, 2]), float(K[1, 2])
+        flat = []  # Float32MultiArray のデータ
 
-        det_array = Detection3DArray()
-        det_array.header = Header()
-        det_array.header.stamp = rgb_msg.header.stamp
-        det_array.header.frame_id = self.camera_info.header.frame_id or rgb_msg.header.frame_id or 'camera_frame'
+        overlay = rgb.copy()
 
-        boxes = getattr(res, 'boxes', None)
-        if boxes is None or boxes.xyxy is None:
-            # No detections
-            self.pub.publish(det_array)
-            return
-
-        # Bring to CPU numpy
-        try:
+        # Ultralytics の出力解釈
+        # results[0].boxes.xyxy (N,4), .conf (N), .cls (N)
+        if len(results) > 0 and results[0].boxes is not None:
+            boxes = results[0].boxes
             xyxy = boxes.xyxy.cpu().numpy()
-            confs = boxes.conf.cpu().numpy() if boxes.conf is not None else np.ones((xyxy.shape[0],), dtype=np.float32)
-            clss = boxes.cls.cpu().numpy().astype(int) if boxes.cls is not None else np.zeros((xyxy.shape[0],), dtype=int)
-        except Exception:
-            # Some older ultralytics versions
-            xyxy = boxes.xyxy
-            confs = boxes.conf if boxes.conf is not None else np.ones((xyxy.shape[0],), dtype=np.float32)
-            clss = boxes.cls.astype(int) if boxes.cls is not None else np.zeros((xyxy.shape[0],), dtype=int)
+            conf = boxes.conf.cpu().numpy()
+            cls  = boxes.cls.cpu().numpy().astype(int)
 
-        H, W = depth_m.shape[:2]
-        win = max(1, self.depth_window)
+            for i in range(xyxy.shape[0]):
+                x1, y1, x2, y2 = xyxy[i]
+                score = float(conf[i])
+                cid   = int(cls[i])
 
-        for i in range(xyxy.shape[0]):
-            x1, y1, x2, y2 = xyxy[i]
-            cx_px = int(round((x1 + x2) / 2.0))
-            cy_px = int(round((y1 + y2) / 2.0))
-            # Clip to image bounds
-            cx_px = max(0, min(W - 1, cx_px))
-            cy_px = max(0, min(H - 1, cy_px))
+                # bbox 中心
+                cx = 0.5 * (x1 + x2)
+                cy = 0.5 * (y1 + y2)
 
-            cls_id = int(clss[i])
-            if self.allowed_classes and cls_id not in self.allowed_classes:
-                continue
+                # 中心距離（メディアン）
+                Z = self._median_center_depth(depth_m, cx, cy)
+                X, Y, Z = self._pixel_to_camera(cx, cy, Z)
 
-            z = median_depth_at(depth_m, cx_px, cy_px, win)
-            if z is None or z <= 0.0 or not math.isfinite(z):
-                continue
+                # ---- vision_msgs/Detection2D を詰める ----
+                det = Detection2D()
+                det.header = rgb_msg.header
 
-            x, y, z = backproject(cx_px, cy_px, z, fx, fy, cx, cy)
+                bbox = BoundingBox2D()
+                # Use the existing sub-message instance to avoid type assertion errors
+                # BoundingBox2D.center is a Pose2D message which contains a 'position' (Point) and 'theta'
+                bbox.center.position.x = float((x1 + x2) / 2.0)
+                bbox.center.position.y = float((y1 + y2) / 2.0)
+                bbox.center.theta = 0.0
+                bbox.size_x = float(max(0.0, x2 - x1))
+                bbox.size_y = float(max(0.0, y2 - y1))
+                det.bbox = bbox
 
-            # Build Detection3D
-            det3d = Detection3D()
-            det3d.header = det_array.header
+                hyp = ObjectHypothesisWithPose()
+                hyp.hypothesis.class_id = str(cid)
+                hyp.hypothesis.score = score
+                # 距離は備考的に pose の position.z に格納（2D検出なので便宜的）
+                hyp.pose.pose.position.x = X
+                hyp.pose.pose.position.y = Y
+                hyp.pose.pose.position.z = Z
+                det.results.append(hyp)
 
-            hyp = ObjectHypothesisWithPose()
-            # Set label as class name if available, otherwise id
-            class_name = self.class_names.get(cls_id, str(cls_id)) if isinstance(self.class_names, dict) else str(cls_id)
-            hyp.hypothesis.class_id = class_name
-            hyp.hypothesis.score = float(confs[i])
+                det_arr.detections.append(det)
 
-            pose = Pose()
-            pose.position = Point(x=x, y=y, z=z)
-            # No orientation estimate; use identity
-            pose.orientation = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+                # ---- Float32MultiArray に [cx, cy, Z, class_id, score] で詰める ----
+                flat.extend([float(cx), float(cy), float(Z), float(cid), float(score)])
 
-            hyp.pose.pose = pose
-            # covariance left default zeros
-            det3d.results.append(hyp)
+                # ---- 可視化 ----
+                if self.pub_overlay:
+                    cv2.rectangle(overlay, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    label = f'id:{cid} {score:.2f} Z:{Z:.2f}m'
+                    cv2.putText(overlay, label, (int(x1), max(0, int(y1)-5)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+                    cv2.circle(overlay, (int(cx), int(cy)), 4, (255, 0, 0), -1)
 
-            # Optional: store approximate size using bbox projected size at depth (not required)
-            det_array.detections.append(det3d)
+                # ---- TF 配信 ----
+                if not np.isnan(Z):
+                    #camera_link（X前=奥行き, Y左, Z上）へ変換
+                    xl = Z
+                    yl = -X
+                    zl = -Y
 
-        self.pub.publish(det_array)
+                    t = TransformStamped()
+                    t.header.stamp = rgb_msg.header.stamp
+                    t.header.frame_id = self.parent_frame
+                    t.child_frame_id = f"object_{cid}_{i}"
+
+                    t.transform.translation.x = xl
+                    t.transform.translation.y = yl
+                    t.transform.translation.z = zl
+                    t.transform.rotation.x = 0.0
+                    t.transform.rotation.y = 0.0
+                    t.transform.rotation.z = 0.0
+                    t.transform.rotation.w = 1.0
+
+                    self.tf_broadcaster.sendTransform(t)
+
+        # Publish detections
+        self.pub_det.publish(det_arr)
+
+        # Publish array
+        arr = Float32MultiArray()
+        arr.layout.dim.append(MultiArrayDimension(label='rows', size=len(flat)//5, stride=len(flat)))
+        arr.layout.dim.append(MultiArrayDimension(label='cols', size=5, stride=5))
+        arr.data = flat
+        self.pub_arr.publish(arr)
+
+        # Publish overlay
+        if self.pub_overlay:
+            img_msg = self.bridge.cv2_to_imgmsg(overlay, encoding='bgr8')
+            img_msg.header = rgb_msg.header
+            self.pub_img.publish(img_msg)
 
 
-def main(args=None):
-    rclpy.init(args=args)
+def main():
+    rclpy.init()
+    node = YoloCenterDistanceNode()
     try:
-        node = YoloDepthNode()
         rclpy.spin(node)
-    finally:
-        rclpy.shutdown()
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
