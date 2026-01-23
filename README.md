@@ -22,7 +22,7 @@ ros2 run usb_cam usb_cam_node_exe
 ```
 Run `object_detection_node`
 ```bash
-ros2 run yolo_ros2 object_detection_node
+ros2 run yolo_ros2 object_detection_node --ros-args --remap image_raw:=/camera/color/image_raw
 ```
 
 ## 👤 Authors
