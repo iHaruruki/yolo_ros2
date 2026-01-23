@@ -20,7 +20,7 @@ class ObjectDetection(Node):
 
         self.subscription = self.create_subscription(
             Image,
-            'camera/color/image_raw',
+            '/image_raw',
             self.image_callback,
             qos_profile_sensor_data)
 
