@@ -8,7 +8,9 @@ from cv_bridge import CvBridge, CvBridgeError
 
 from ultralytics import YOLO
 
+
 class ObjectDetection(Node):
+
     def __init__(self, **args):
         super().__init__('object_detection')
 
@@ -18,28 +20,29 @@ class ObjectDetection(Node):
 
         self.subscription = self.create_subscription(
             Image,
-            '/camera/color/image_raw',
+            'camera/color/image_raw',
             self.image_callback,
-            qos_profile_sensor_data
-        )
+            qos_profile_sensor_data)
 
-    def image_callback(self, img_msg):
+    def image_callback(self, msg):
         try:
-            img = self.bridge.imgmsg_to_cv2(img_msg, "bgr8")
+            img0 = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             self.get_logger().warn(str(e))
+            return
 
-        detection_results = self.detection_model(img)
-        annotated_frame = detection_results[0].plot()
+        detection_result = self.detection_model(img0)
+        annotated_frame = detection_result[0].plot()
 
         cv2.imshow('result', annotated_frame)
         cv2.waitKey(1)
 
+
 def main():
     rclpy.init()
-    object_detection_node = ObjectDetection()
+    object_detection = ObjectDetection()
     try:
-        rclpy.spin(object_detection_node)
+        rclpy.spin(object_detection)
     except KeyboardInterrupt:
         pass
     rclpy.shutdown()
