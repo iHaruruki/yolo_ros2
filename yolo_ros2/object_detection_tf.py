@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, PointStamped
 from message_filters import Subscriber, ApproximateTimeSynchronizer
 from tf2_ros import TransformBroadcaster
 
@@ -18,8 +18,9 @@ class ObjectDetectionTF(Node):
     def __init__(self):
         super().__init__('object_detection_tf')
 
-        self.target_name = 'person'     # 探す物体名
-        self.frame_id = 'camera_link'   # ブロードキャストするtfの名前
+        self.target_name = 'teddy bear'         # 探す物体名
+        self.frame_id = 'detected_object'       # 検出されたオブジェクトのフレーム名
+        self.parent_frame_id = 'camera_depth_optical_frame'    # 親フレーム
 
         # message_filtersを使って3個のトピックのサブスクライブをまとめて処理する．
         self.callback_group = ReentrantCallbackGroup()   # コールバックの並行処理のため
@@ -38,6 +39,13 @@ class ObjectDetectionTF(Node):
         
         # 認識した物体の位置をtfとして出力するためのブロードキャスタ
         self.broadcaster = TransformBroadcaster(self)
+
+        # 3次元座標をパブリッシュするためのパブリッシャーを追加
+        self.point_pub = self.create_publisher(
+            PointStamped, 
+            '/object_position', 
+            10
+        )
 
         self.detection_model = YOLO("yolov8m.pt")
 
@@ -90,7 +98,7 @@ class ObjectDetectionTF(Node):
             u1 = round((bu1 + bu2) / 2 - (bu2 - bu1) * a / 2)
             u2 = round((bu1 + bu2) / 2 + (bu2 - bu1) * a / 2)
             v1 = round((bv1 + bv2) / 2 - (bv2 - bv1) * a / 2)
-            v2 = round((bv1 + bv2) / 2 + (bv2 - bv1) * a / 2)
+            v2 = round((bv1 + bv2) / 2 + (bv2 - bv2) * a / 2)
             u = round((bu1 + bu2) / 2)
             v = round((bv1 + bv2) / 2)
             depth = np.median(img_depth[v1:v2+1, u1:u2+1])
@@ -104,14 +112,25 @@ class ObjectDetectionTF(Node):
                 y = z / fy * (v - cy)
                 self.get_logger().info(
                     f'{self.target_name} ({x:.3f}, {y:.3f}, {z:.3f})')
+                
                 # tfの送出
                 ts = TransformStamped()
-                ts.header = msg_depth.header
+                ts.header.stamp = self.get_clock().now().to_msg()
+                ts.header.frame_id = self.parent_frame_id  # 親フレームを明示
                 ts.child_frame_id = self.frame_id
                 ts.transform.translation.x = x
                 ts.transform.translation.y = y
                 ts.transform.translation.z = z
+                ts.transform.rotation.w = 1.0  # 姿勢を設定（回転なし）
                 self.broadcaster.sendTransform(ts)
+
+                # 3次元座標をPointStampedメッセージとしてパブリッシュ
+                point_msg = PointStamped()
+                point_msg.header = msg_depth.header
+                point_msg.point.x = x
+                point_msg.point.y = y
+                point_msg.point.z = z
+                self.point_pub.publish(point_msg)
 
         # 深度画像の加工
         if img_depth_conversion:
