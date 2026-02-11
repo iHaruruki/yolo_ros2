@@ -14,7 +14,7 @@ class ObjectSegmentation(Node):
     def __init__(self, **args):
         super().__init__('object_segmentation')
 
-        self.segmentation_model = YOLO("yolov8m-seg.pt")
+        self.segmentation_model = YOLO("yolov26s-seg.pt")
 
         self.bridge = CvBridge()
 

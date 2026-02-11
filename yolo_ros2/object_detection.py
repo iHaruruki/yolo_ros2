@@ -14,7 +14,7 @@ class ObjectDetection(Node):
     def __init__(self, **args):
         super().__init__('object_detection')
 
-        self.detection_model = YOLO("yolov8m.pt")
+        self.detection_model = YOLO("yolov26s.pt")
 
         self.bridge = CvBridge()
 
