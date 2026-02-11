@@ -76,5 +76,6 @@ ros2 run yolo_ros2 object_detection_tf_node
 - **[iHaruruki](https://github.com/iHaruruki)** — Main author & maintainer
 
 ## 📚 References
+- [ultralytics](https://docs.ultralytics.com/)
 - [YOLO on ROS](https://docs.ultralytics.com/ja/guides/ros-quickstart/#point-clouds-step-by-step-usage)
 - [ROS 2とPythonで作って学ぶAIロボット入門 改訂第2版のサポートサイト](https://github.com/AI-Robot-Book-Humble/chapter5/tree/main/yolov8_ros2)
