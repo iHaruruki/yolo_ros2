@@ -1,10 +1,14 @@
 # yolo_ros2
+[![ROS 2 Distro - Humble](https://img.shields.io/badge/ros2-Humble-blue)](https://docs.ros.org/en/humble/)
+
+## 🚀 Overview
+
+## 📦 Features
+
 ## 🛠️ Setup
 Install ros2 packages
 ```bash
-sudo apt install ros-humble-vision-msgs
-sudo apt install ros-humble-message-filters
-sudo apt install ros-humble-cv-bridge
+sudo apt install -y ros-$ROS_DISTRO-vision-msgs ros-$ROS_DISTRO-message-filters ros-$ROS_DISTRO-cv-bridge
 ```
 Install YOLOv8
 ```bash
@@ -18,6 +22,9 @@ pip3 uninstall -y opencv-python
 ### Object detection
 Run camera
 ```bash
+ros2 launch orbbec_camera astra_stereo_u3.launch.py
+```
+```bash
 ros2 launch astra_camera astra_pro.launch.xml
 ```
 Run `object_detection_node`
@@ -27,16 +34,24 @@ ros2 run yolo_ros2 object_detection_node --ros-args --remap image_raw:=/camera/c
 ### Object segmentation
 Run camera
 ```bash
+ros2 launch orbbec_camera astra_stereo_u3.launch.py
+```
+```bash
 ros2 launch astra_camera astra_pro.launch.xml
 ```
+Run `object_segmentation_node`
 ```bash
 ros2 run yolo_ros2 object_segmentation_node --ros-args --remap image_raw:=/camera/color/image_raw
 ```
 ### Object detection tf
 Run camera
 ```bash
+ros2 launch orbbec_camera astra_stereo_u3.launch.py
+```
+```bash
 ros2 launch astra_camera astra_pro.launch.xml
 ```
+Run `object_detection_tf_node`
 ```bash
 ros2 run yolo_ros2 object_detection_tf_node
 ```
