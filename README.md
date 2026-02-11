@@ -2,8 +2,12 @@
 [![ROS 2 Distro - Humble](https://img.shields.io/badge/ros2-Humble-blue)](https://docs.ros.org/en/humble/)
 
 ## 🚀 Overview
+Object recognition by yolo running as a ROS 2 node.
 
 ## 📦 Features
+* Object detection
+* Object segmentation
+* Estimating 3D coordinates of an object using a depth camera
 
 ## 🛠️ Setup
 Install ros2 packages
@@ -17,6 +21,18 @@ pip3 uninstall -y opencv-python
 ```
 > [!NOTE]
 > open-python は ultralytics とともに自動的にインストールされます．したがって,open-contrib-python との競合を避けるためにこれを削除する必要があります．
+
+Clone repository
+```bash
+cd ~/ros2_ws/src
+git clone https://github.com/iHaruruki/yolo_ros2.git
+```
+Build
+```bash
+cd ~/ros2_ws
+colcon build --symlink-install --packages-select yolo_ros2
+source install/setup.bash
+```
 
 ## 🎮 Usage
 ### Object detection
@@ -43,7 +59,7 @@ Run `object_segmentation_node`
 ```bash
 ros2 run yolo_ros2 object_segmentation_node --ros-args --remap image_raw:=/camera/color/image_raw
 ```
-### Object detection tf
+### Estimating 3D coordinates of an object using a depth camera
 Run camera
 ```bash
 ros2 launch orbbec_camera astra_stereo_u3.launch.py
