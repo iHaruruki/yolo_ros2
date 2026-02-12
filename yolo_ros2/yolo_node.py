@@ -10,7 +10,7 @@ class YoloNode(Node):
     def __init__(self):
         super().__init__('yolo_node')
         self.bridge = CvBridge()
-        self.model = YOLO('./models/yolov8n.pt')
+        self.model = YOLO('./models/yolo11s.pt')
 
         # message_filters を使って Image と CameraInfo を同期
         self.image_sub = Subscriber(self, Image, '/camera/color/image_raw')
@@ -34,6 +34,12 @@ class YoloNode(Node):
         # K = np.array(info_msg.k).reshape(3,3)
         # D = np.array(info_msg.d)
         # frame = cv2.undistort(frame, K, D)
+
+        detection_result = self.model(frame)
+        annotated_frame = detection_result[0].plot()
+
+        cv2.imshow('result', annotated_frame)
+        cv2.waitKey(1)
 
         results = self.model(frame)[0]
         annotated = results.plot()

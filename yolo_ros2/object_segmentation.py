@@ -14,13 +14,13 @@ class ObjectSegmentation(Node):
     def __init__(self, **args):
         super().__init__('object_segmentation')
 
-        self.segmentation_model = YOLO("yolov26s-seg.pt")
+        self.segmentation_model = YOLO("yolo11s-seg.pt")
 
         self.bridge = CvBridge()
 
         self.subscription = self.create_subscription(
             Image,
-            'image_raw',
+            '/camera/color/image_raw',
             self.image_callback,
             qos_profile_sensor_data)
 

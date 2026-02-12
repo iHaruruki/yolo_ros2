@@ -14,13 +14,13 @@ class ObjectDetection(Node):
     def __init__(self, **args):
         super().__init__('object_detection')
 
-        self.detection_model = YOLO("yolov26s.pt")
+        self.detection_model = YOLO("yolo11s.pt")
 
         self.bridge = CvBridge()
 
         self.subscription = self.create_subscription(
             Image,
-            '/image_raw',
+            '/camera/color/image_raw',
             self.image_callback,
             qos_profile_sensor_data)
 
