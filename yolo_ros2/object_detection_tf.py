@@ -47,7 +47,7 @@ class ObjectDetectionTF(Node):
             10
         )
 
-        self.detection_model = YOLO("yolo11m.pt")
+        self.detection_model = YOLO("yolo26s.pt")
 
     def images_callback(self, msg_info, msg_color, msg_depth):
         try:
