@@ -33,6 +33,7 @@ setup(
             'object_detection_node = yolo_ros2.object_detection:main',
             'object_segmentation_node = yolo_ros2.object_segmentation:main',
             'object_detection_tf_node = yolo_ros2.object_detection_tf:main',
+            'object_segmentation_tf_node = yolo_ros2.object_segmentation_tf:main',
         ],
     },
 )
