@@ -71,6 +71,16 @@ Run `object_detection_tf_node`
 ```bash
 ros2 run yolo_ros2 object_detection_tf_node
 ```
+#### Parameters
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `target_name` | string | `teddy bear` | Name of the object to detect (must match YOLO class name) |
+| `frame_id` | string | `detected_object` | TF frame ID for detected object |
+| `parent_frame_id` | string | `camera_depth_optical_frame` | Parent TF frame (camera frame) |
+| `model_path` | string | `~/ros2_ws/src/yolo_ros2/yolo_models/yolo26s.pt` | Path to YOLO model file |
+| `roi_scale` | double | `0.5` | Controls how much of the detected bounding box is used to extract the depth value from the depth image. (0.0-1.0) |
+| `confidence_threshold` | double | `0.5` | YOLO confidence threshold (0.0-1.0) |
+| `depth_median_window` | int | `20` | Window size for extracting depth values - takes the median of NxN pixel region around the object center. |
 
 ## 👤 Authors
 - **[iHaruruki](https://github.com/iHaruruki)** — Main author & maintainer
