@@ -35,7 +35,8 @@ source install/setup.bash
 ```
 
 ## 🎮 Usage
-### Object detection
+### 📈 Predict
+#### Object detection
 Run camera
 ```bash
 ros2 launch orbbec_camera astra_stereo_u3.launch.py
@@ -47,7 +48,7 @@ Run `object_detection_tf_node`
 ```bash
 ros2 run yolo_ros2 object_detection_tf_node
 ```
-#### Parameters
+##### Parameters
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `target_name` | string | `teddy bear` | Name of the object to detect (must match YOLO class name) |
@@ -58,7 +59,7 @@ ros2 run yolo_ros2 object_detection_tf_node
 | `confidence_threshold` | double | `0.5` | YOLO confidence threshold (0.0-1.0) |
 | `depth_median_window` | int | `20` | Window size for extracting depth values - takes the median of NxN pixel region around the object center. |
 
-### Object segmentation
+#### Object segmentation
 Run camera
 ```bash
 ros2 launch orbbec_camera astra_stereo_u3.launch.py
@@ -70,7 +71,7 @@ Run `object_segmentation_tf_node`
 ```bash
 ros2 run yolo_ros2 object_segmentation_tf_node
 ```
-#### Parameters
+##### Parameters
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `target_name` | string | `teddy bear` | Name of the object to detect (must match YOLO class name) |
@@ -81,6 +82,14 @@ ros2 run yolo_ros2 object_segmentation_tf_node
 | `confidence_threshold` | double | `0.5` | YOLO confidence threshold (0.0-1.0) |
 | `depth_median_window` | int | `20` | Window size for extracting depth values - takes the median of NxN pixel region around the object center. |
 | `enable_visualization` | bool | ``ture | Show OpenCV windows. |
+
+
+### 📊 Train
+Run `color_image_capture_node`
+```bash
+ros2 run yolo_ros2 color_image_capture_node
+# Saves in PNG format only when the Space key is pressed.
+```
 
 ## 👤 Authors
 - **[iHaruruki](https://github.com/iHaruruki)** — Main author & maintainer
