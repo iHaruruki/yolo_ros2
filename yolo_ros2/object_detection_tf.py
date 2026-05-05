@@ -18,7 +18,7 @@ class ObjectDetectionTF(Node):
     def __init__(self):
         super().__init__('object_detection_tf')
 
-        self.target_name = 'teddy bear'         # 探す物体名
+        self.target_name = 'handbell_e'         # 探す物体名
         self.frame_id = 'detected_object'       # 検出されたオブジェクトのフレーム名
         self.parent_frame_id = 'camera_depth_optical_frame'    # 親フレーム
 
@@ -47,7 +47,8 @@ class ObjectDetectionTF(Node):
             10
         )
 
-        self.detection_model = YOLO("yolo26s.pt")
+        self.detection_model = YOLO("best.pt")
+        #self.detection_model = YOLO("yolo26s.pt")
 
     def images_callback(self, msg_info, msg_color, msg_depth):
         try:
@@ -110,7 +111,7 @@ class ObjectDetectionTF(Node):
                 cy = msg_info.k[5]
                 x = z / fx * (u - cx)
                 y = z / fy * (v - cy)
-                self.get_logger().info(
+                self.get_logger().debug(
                     f'{self.target_name} ({x:.3f}, {y:.3f}, {z:.3f})')
                 
                 # tfの送出
