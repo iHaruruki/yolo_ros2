@@ -26,7 +26,7 @@ class ObjectDetectionTF(Node):
         self.declare_parameter('model_path', '~/ros2_ws/src/yolo_ros2/yolo_models/yolo26s.pt')
         self.declare_parameter('roi_scale', 0.5)
         self.declare_parameter('confidence_threshold', 0.5)
-        self.declare_parameter('depth_median_window', 10)
+        self.declare_parameter('depth_median_window', 20)
 
         # Get parameters
         self.target_name = self.get_parameter('target_name').value
