@@ -46,7 +46,7 @@ ros2 launch astra_camera astra_pro.launch.xml
 ```
 Run `object_detection_tf_node`
 ```bash
-ros2 run yolo_ros2 object_detection_tf_node
+ros2 run yolo_ros2 object_detection_tf_node --ros-args -p model_path:=~/camera_data/datasets_2/runs/detect/train/weights/best.pt -p confidence_threshold:=0.5
 ```
 ##### Parameters
 | Parameter | Type | Default | Description |
